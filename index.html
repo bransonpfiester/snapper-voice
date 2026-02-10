@@ -258,10 +258,11 @@
         async function sendMessage(text) {
             addMessage(text, 'user');
             
-            // TODO: OpenClaw API integration
+            // Backend connection requires Tailscale funnel or public endpoint
+            // For now, use Telegram for full functionality
             setTimeout(() => {
-                addMessage('Message received. Backend integration pending.', 'assistant');
-            }, 800);
+                addMessage('Voice UI is aesthetic but not connected yet. Use Telegram to actually talk to me. Need to set up Tailscale funnel or public gateway endpoint.', 'assistant');
+            }, 500);
         }
         
         if (recognition) {
