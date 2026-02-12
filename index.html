@@ -319,7 +319,7 @@
     <script>
         // Configuration
         const ELEVENLABS_API_KEY = 'sk_6e29c2c4e7217fd6e947103b18524c8868ae8f6b954f6bcf';
-        const ELEVENLABS_VOICE_ID = 'Fahco4VZzobUeiPqni1S';
+        const ELEVENLABS_VOICE_ID = 'IKne3meq5aSn9XLyUdCD'; // Charlie - Deep, Confident voice
         
         // Speech recognition setup
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -457,7 +457,6 @@
                     },
                     body: JSON.stringify({
                         text: text,
-                        model_id: 'eleven_monolingual_v1',
                         voice_settings: {
                             stability: 0.5,
                             similarity_boost: 0.75
