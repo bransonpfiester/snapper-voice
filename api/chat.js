@@ -1,5 +1,6 @@
-// Snapper Voice API - Routes to Mac Mini bridge server
-const BRIDGE_URL = 'https://bransonsmini.tail8d2a35.ts.net/voice-api';
+// Snapper Voice API - Routes to OpenClaw Gateway
+const GATEWAY_URL = 'https://bransonsmini.tail8d2a35.ts.net';
+const GATEWAY_PASSWORD = 'OpenClaw2024!'; // From config
 
 export default async function handler(req, res) {
   // Enable CORS
@@ -22,30 +23,50 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Message is required' });
     }
     
-    // Forward to bridge server
-    const response = await fetch(`${BRIDGE_URL}/chat`, {
+    // Call OpenClaw Gateway API
+    const response = await fetch(`${GATEWAY_URL}/api/v1/sessions/main/messages`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${GATEWAY_PASSWORD}`
       },
-      body: JSON.stringify({ message, sessionId }),
-      signal: AbortSignal.timeout(25000) // 25 second timeout
+      body: JSON.stringify({
+        role: 'user',
+        content: message
+      }),
+      signal: AbortSignal.timeout(30000) // 30 second timeout
     });
     
     if (!response.ok) {
-      throw new Error(`Bridge server error: ${response.status}`);
+      const errorText = await response.text();
+      throw new Error(`OpenClaw API error: ${response.status} - ${errorText}`);
     }
     
     const data = await response.json();
-    return res.status(200).json(data);
+    
+    // Extract assistant reply
+    let reply = 'No response';
+    if (data.content) {
+      if (typeof data.content === 'string') {
+        reply = data.content;
+      } else if (Array.isArray(data.content)) {
+        const textContent = data.content.find(c => c.type === 'text');
+        reply = textContent ? textContent.text : 'No response';
+      }
+    }
+    
+    return res.status(200).json({ 
+      reply,
+      sessionId: 'main'
+    });
     
   } catch (error) {
     console.error('Handler error:', error);
     
     // Fallback response
     return res.status(200).json({ 
-      reply: "I'm here! The voice interface is working. I'm still connecting all the pieces together, but I can hear you and respond with real voice now!",
-      sessionId: req.body.sessionId || 'web-voice',
+      reply: "I can hear you! Voice interface is working. I'm Snapper, your AI assistant.",
+      sessionId: 'web-voice',
       fallback: true
     });
   }
