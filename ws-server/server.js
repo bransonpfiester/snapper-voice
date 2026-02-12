@@ -100,36 +100,25 @@ async function handleChatMessage(ws, clientId, message) {
       status: 'thinking'
     }));
     
-    // Call OpenClaw Gateway API
-    const response = await fetch(`${GATEWAY_URL}/api/v1/sessions/main/messages`, {
+    // Use the existing Vercel API endpoint (already working)
+    const response = await fetch('https://snapper-voice.vercel.app/api/chat', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${GATEWAY_PASSWORD}`
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        role: 'user',
-        content: userMessage
+        message: userMessage,
+        sessionId: 'web-voice-streaming'
       }),
       signal: AbortSignal.timeout(30000)
     });
     
     if (!response.ok) {
-      throw new Error(`OpenClaw API error: ${response.status}`);
+      throw new Error(`API error: ${response.status}`);
     }
     
     const data = await response.json();
-    
-    // Extract reply text
-    let replyText = 'No response';
-    if (data.content) {
-      if (typeof data.content === 'string') {
-        replyText = data.content;
-      } else if (Array.isArray(data.content)) {
-        const textContent = data.content.find(c => c.type === 'text');
-        replyText = textContent ? textContent.text : 'No response';
-      }
-    }
+    const replyText = data.reply || 'No response';
     
     console.log(`🤖 Response: "${replyText.substring(0, 100)}..."`);
     
@@ -182,7 +171,7 @@ async function streamTTS(ws, clientId, text) {
         },
         body: JSON.stringify({
           text: text,
-          model_id: 'eleven_monolingual_v1',
+          model_id: 'eleven_turbo_v2_5',
           voice_settings: {
             stability: 0.5,
             similarity_boost: 0.75
