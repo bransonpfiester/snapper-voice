@@ -1,7 +1,16 @@
-import WebSocket from 'ws';
+// Simple mock API for Snapper Voice UI
+// In production, this would connect to OpenClaw gateway via WebSocket
+// For now, returns demo responses to test the voice interface
 
-const GATEWAY_WS_URL = 'wss://bransonsmini.tail8d2a35.ts.net';
-const GATEWAY_PASSWORD = '64b5408ca5a2ba319fb0075f6d353fe0aded3fe89d6ca56f';
+const DEMO_RESPONSES = [
+  "Hey! This is Snapper Voice 2.0. The full OpenClaw integration is almost ready - for now, I'm in demo mode!",
+  "The voice interface is working great! Speech-to-text and text-to-speech are both functional.",
+  "To get full functionality with tool execution, we need to set up a persistent WebSocket server. The Vercel serverless environment doesn't support long-lived WebSocket connections.",
+  "Try speaking to me! The push-to-talk button works with your device's speech recognition.",
+  "For now, use me on Telegram for full functionality. This voice UI will be fully connected soon!"
+];
+
+let responseIndex = 0;
 
 export default async function handler(req, res) {
   // Enable CORS
@@ -24,79 +33,24 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Message is required' });
     }
     
-    // Connect to OpenClaw via WebSocket
-    const ws = new WebSocket(GATEWAY_WS_URL);
-    let responseText = '';
-    let authSuccess = false;
+    // Simulate processing delay
+    await new Promise(resolve => setTimeout(resolve, 1000));
     
-    const timeout = setTimeout(() => {
-      ws.close();
-      if (!res.headersSent) {
-        res.status(504).json({ error: 'Gateway timeout' });
-      }
-    }, 30000); // 30 second timeout
+    // Return a demo response
+    const reply = DEMO_RESPONSES[responseIndex % DEMO_RESPONSES.length];
+    responseIndex++;
     
-    ws.on('open', () => {
-      // Authenticate
-      ws.send(JSON.stringify({
-        type: 'auth',
-        password: GATEWAY_PASSWORD
-      }));
-    });
-    
-    ws.on('message', (data) => {
-      try {
-        const msg = JSON.parse(data.toString());
-        
-        if (msg.type === 'auth_success') {
-          authSuccess = true;
-          // Send the user message
-          ws.send(JSON.stringify({
-            type: 'chat',
-            sessionKey: `agent:main:${sessionId}`,
-            message: message
-          }));
-        } else if (msg.type === 'chat_response' || msg.type === 'message') {
-          responseText += msg.text || msg.content || '';
-        } else if (msg.type === 'chat_complete' || msg.type === 'done') {
-          clearTimeout(timeout);
-          ws.close();
-          res.status(200).json({
-            reply: responseText || 'No response',
-            sessionId: sessionId
-          });
-        } else if (msg.type === 'error') {
-          clearTimeout(timeout);
-          ws.close();
-          res.status(500).json({ error: msg.message || 'Gateway error' });
-        }
-      } catch (err) {
-        console.error('Message parse error:', err);
-      }
-    });
-    
-    ws.on('error', (error) => {
-      clearTimeout(timeout);
-      console.error('WebSocket error:', error);
-      if (!res.headersSent) {
-        res.status(500).json({ error: 'WebSocket connection failed' });
-      }
-    });
-    
-    ws.on('close', () => {
-      clearTimeout(timeout);
-      if (!res.headersSent) {
-        // If we got a response, send it
-        if (responseText) {
-          res.status(200).json({ reply: responseText, sessionId: sessionId });
-        } else {
-          res.status(500).json({ error: 'Connection closed without response' });
-        }
-      }
+    return res.status(200).json({
+      reply: reply,
+      sessionId: sessionId,
+      mode: 'demo',
+      note: 'Demo mode - full OpenClaw integration coming soon. Use Telegram for full functionality.'
     });
     
   } catch (error) {
     console.error('Handler error:', error);
-    res.status(500).json({ error: error.message });
+    return res.status(500).json({ 
+      error: error.message
+    });
   }
 }
