@@ -388,7 +388,7 @@
             }
         }
         
-        // Send message to OpenClaw
+        // Send message to OpenClaw via Vercel API
         async function sendMessage(text) {
             if (isProcessing) return;
             
@@ -399,34 +399,35 @@
             talkBtn.textContent = 'Processing...';
             
             try {
-                const gatewayUrl = gatewayUrlInput.value.trim();
-                const password = gatewayPasswordInput.value.trim();
+                // Use Vercel serverless function as bridge
+                const apiUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+                    ? '/api/chat'  // Local testing
+                    : 'https://snapper-voice.vercel.app/api/chat';  // Production
                 
-                const response = await fetch(`${gatewayUrl}/api/v1/chat`, {
+                const response = await fetch(apiUrl, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${password}`
+                        'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
                         message: text,
-                        sessionId: sessionId,
-                        stream: false
+                        sessionId: sessionId
                     })
                 });
                 
                 if (!response.ok) {
-                    throw new Error(`Gateway error: ${response.status} ${response.statusText}`);
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.error || `Server error: ${response.status}`);
                 }
                 
                 const data = await response.json();
-                const replyText = data.reply || data.message || 'No response';
+                const replyText = data.reply || 'No response';
                 
                 addMessage(replyText, 'assistant');
                 await speakText(replyText);
                 
             } catch (error) {
-                console.error('OpenClaw error:', error);
+                console.error('API error:', error);
                 const errorMsg = `Error: ${error.message}`;
                 addMessage(errorMsg, 'assistant');
                 setStatus('Error', 'error');
