@@ -1,9 +1,0 @@
-{
-  "name": "snapper-voice",
-  "version": "2.0.0",
-  "description": "Voice interface for Snapper",
-  "type": "module",
-  "dependencies": {
-    "ws": "^8.16.0"
-  }
-}

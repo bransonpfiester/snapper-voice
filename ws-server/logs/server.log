@@ -26,3 +26,17 @@ Emitted 'error' event on WebSocketServer instance at:
 }
 
 Node.js v25.5.0
+🚀 Snapper Voice WebSocket Server
+   Port: 18791
+   Gateway: https://bransonsmini.tail8d2a35.ts.net
+   Waiting for connections...
+
+🎙️  Server running on port 18791
+   WebSocket: ws://localhost:18791
+   Health: http://localhost:18791/health
+
+   Ready for connections!
+
+
+👋 Shutting down gracefully...
+✅ Server closed

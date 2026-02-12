@@ -100,25 +100,30 @@ async function handleChatMessage(ws, clientId, message) {
       status: 'thinking'
     }));
     
-    // Use the existing Vercel API endpoint (already working)
-    const response = await fetch('https://snapper-voice.vercel.app/api/chat', {
+    // Call OpenClaw Gateway API directly
+    const response = await fetch(`${GATEWAY_URL}/api/gateway/call`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${GATEWAY_PASSWORD}`
       },
       body: JSON.stringify({
-        message: userMessage,
-        sessionId: 'web-voice-streaming'
+        method: 'sessions_send',
+        params: {
+          sessionKey: 'agent:main:main',
+          message: userMessage
+        }
       }),
       signal: AbortSignal.timeout(30000)
     });
     
     if (!response.ok) {
-      throw new Error(`API error: ${response.status}`);
+      const errorText = await response.text();
+      throw new Error(`Gateway API error: ${response.status} - ${errorText}`);
     }
     
     const data = await response.json();
-    const replyText = data.reply || 'No response';
+    const replyText = data.result?.reply || data.result?.message || 'No response';
     
     console.log(`🤖 Response: "${replyText.substring(0, 100)}..."`);
     
