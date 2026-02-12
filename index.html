@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Snapper</title>
+    <title>Snapper Voice</title>
     <style>
         * {
             margin: 0;
@@ -19,40 +19,70 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
-            padding: 40px 20px;
-            overflow: hidden;
+            padding: 20px;
+            overflow-x: hidden;
         }
         
         .container {
-            max-width: 500px;
+            max-width: 600px;
             width: 100%;
+            margin-top: 40px;
         }
         
         h1 {
             text-align: center;
-            margin-bottom: 60px;
-            font-size: 1.5rem;
+            margin-bottom: 10px;
+            font-size: 1.8rem;
             font-weight: 500;
             letter-spacing: -0.02em;
-            opacity: 0.6;
+            opacity: 0.9;
         }
         
+        .status {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 0.85rem;
+            opacity: 0.4;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            transition: all 0.3s;
+        }
+        
+        .status.connected { opacity: 0.6; color: #10b981; }
+        .status.recording { opacity: 0.8; color: #6366f1; }
+        .status.processing { opacity: 0.8; color: #f59e0b; }
+        .status.speaking { opacity: 0.8; color: #ec4899; }
+        .status.error { opacity: 0.8; color: #ef4444; }
+        
         .messages {
-            height: 400px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            padding: 20px;
+            min-height: 350px;
+            max-height: 450px;
             overflow-y: auto;
-            margin-bottom: 40px;
-            scrollbar-width: none;
-            -ms-overflow-style: none;
+            margin-bottom: 25px;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
         }
         
         .messages::-webkit-scrollbar {
-            display: none;
+            width: 6px;
+        }
+        
+        .messages::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        
+        .messages::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
         }
         
         .message {
-            margin-bottom: 24px;
-            animation: fadeIn 0.3s ease;
+            margin-bottom: 20px;
+            animation: fadeIn 0.4s ease;
         }
         
         @keyframes fadeIn {
@@ -67,9 +97,9 @@
         }
         
         .message-label {
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             opacity: 0.4;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
             text-transform: uppercase;
             letter-spacing: 0.1em;
         }
@@ -77,7 +107,8 @@
         .message-text {
             font-size: 0.95rem;
             line-height: 1.6;
-            opacity: 0.9;
+            opacity: 0.85;
+            white-space: pre-wrap;
         }
         
         .message.user {
@@ -91,31 +122,46 @@
         .controls {
             display: flex;
             flex-direction: column;
-            gap: 20px;
+            gap: 15px;
         }
         
         .talk-btn {
-            height: 120px;
-            border-radius: 60px;
+            height: 100px;
+            border-radius: 50px;
             border: 1px solid rgba(255, 255, 255, 0.1);
             background: transparent;
             color: white;
-            font-size: 0.9rem;
+            font-size: 1rem;
             font-weight: 400;
             cursor: pointer;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             letter-spacing: 0.05em;
             text-transform: uppercase;
+            position: relative;
+            overflow: hidden;
         }
         
         .talk-btn:hover {
-            border-color: rgba(255, 255, 255, 0.3);
-            background: rgba(255, 255, 255, 0.02);
+            border-color: rgba(255, 255, 255, 0.25);
+            background: rgba(255, 255, 255, 0.03);
         }
         
+        .talk-btn:active,
         .talk-btn.recording {
-            border-color: rgba(255, 255, 255, 0.4);
-            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(99, 102, 241, 0.6);
+            background: rgba(99, 102, 241, 0.1);
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        .talk-btn.processing {
+            border-color: rgba(245, 158, 11, 0.6);
+            background: rgba(245, 158, 11, 0.1);
+            cursor: wait;
+        }
+        
+        .talk-btn.speaking {
+            border-color: rgba(236, 72, 153, 0.6);
+            background: rgba(236, 72, 153, 0.1);
             animation: pulse 2s ease-in-out infinite;
         }
         
@@ -125,9 +171,14 @@
                 opacity: 1;
             }
             50% {
-                transform: scale(1.02);
-                opacity: 0.9;
+                transform: scale(1.015);
+                opacity: 0.92;
             }
+        }
+        
+        .talk-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
         }
         
         .text-input {
@@ -137,7 +188,7 @@
         
         .text-input input {
             flex: 1;
-            padding: 16px 20px;
+            padding: 16px 22px;
             border-radius: 30px;
             border: 1px solid rgba(255, 255, 255, 0.1);
             background: transparent;
@@ -148,7 +199,7 @@
         
         .text-input input:focus {
             outline: none;
-            border-color: rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.25);
             background: rgba(255, 255, 255, 0.02);
         }
         
@@ -170,62 +221,110 @@
         }
         
         .text-input button:hover {
-            border-color: rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.25);
             background: rgba(255, 255, 255, 0.05);
         }
         
-        .status {
-            text-align: center;
-            margin-top: 30px;
-            font-size: 0.75rem;
-            opacity: 0.3;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
+        .settings {
+            margin-top: 25px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
         }
         
-        .status.recording {
+        .settings h3 {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
             opacity: 0.6;
+            margin-bottom: 15px;
+        }
+        
+        .settings label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 0.8rem;
+            opacity: 0.5;
+        }
+        
+        .settings input {
+            width: 100%;
+            padding: 10px 14px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.03);
+            color: white;
+            font-size: 0.85rem;
+            margin-bottom: 12px;
+        }
+        
+        .settings input:focus {
+            outline: none;
+            border-color: rgba(255, 255, 255, 0.2);
         }
         
         @media (max-width: 640px) {
             .container {
-                max-width: 100%;
+                margin-top: 20px;
             }
             
             h1 {
-                margin-bottom: 40px;
+                font-size: 1.5rem;
             }
             
             .messages {
-                height: 300px;
+                min-height: 250px;
+                max-height: 350px;
+            }
+            
+            .talk-btn {
+                height: 80px;
             }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Snapper</h1>
+        <h1>Snapper 🦞</h1>
+        <div class="status" id="status">Initializing...</div>
         
         <div class="messages" id="messages">
             <div class="message assistant">
                 <div class="message-label">Snapper</div>
-                <div class="message-text">Hold the button and speak.</div>
+                <div class="message-text">Hey! Hold the button and speak, or type below.</div>
             </div>
         </div>
         
         <div class="controls">
-            <button class="talk-btn" id="talkBtn">Hold to Talk</button>
+            <button class="talk-btn" id="talkBtn" disabled>
+                Hold to Talk
+            </button>
             
             <div class="text-input">
-                <input type="text" id="textInput" placeholder="Or type here" />
+                <input type="text" id="textInput" placeholder="Or type here..." />
                 <button id="sendBtn">Send</button>
             </div>
         </div>
         
-        <div class="status" id="status">Ready</div>
+        <div class="settings">
+            <h3>Settings</h3>
+            <label>OpenClaw Gateway URL</label>
+            <input type="text" id="gatewayUrl" value="http://localhost:18789" />
+            
+            <label>Gateway Password</label>
+            <input type="password" id="gatewayPassword" value="64b5408ca5a2ba319fb0075f6d353fe0aded3fe89d6ca56f" />
+        </div>
     </div>
+    
+    <audio id="audioPlayer" style="display:none;"></audio>
 
     <script>
+        // Configuration
+        const ELEVENLABS_API_KEY = 'sk_6e29c2c4e7217fd6e947103b18524c8868ae8f6b954f6bcf';
+        const ELEVENLABS_VOICE_ID = 'Fahco4VZzobUeiPqni1S';
+        
+        // Speech recognition setup
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         const recognition = SpeechRecognition ? new SpeechRecognition() : null;
         
@@ -235,36 +334,167 @@
             recognition.lang = 'en-US';
         }
         
-        const messages = document.getElementById('messages');
+        // DOM elements
         const status = document.getElementById('status');
+        const messages = document.getElementById('messages');
         const talkBtn = document.getElementById('talkBtn');
         const textInput = document.getElementById('textInput');
         const sendBtn = document.getElementById('sendBtn');
+        const audioPlayer = document.getElementById('audioPlayer');
+        const gatewayUrlInput = document.getElementById('gatewayUrl');
+        const gatewayPasswordInput = document.getElementById('gatewayPassword');
         
+        // State
         let isRecording = false;
+        let isProcessing = false;
+        let isSpeaking = false;
         let currentTranscript = '';
+        let sessionId = 'web-voice-' + Date.now();
         
+        // Initialize
+        if (recognition) {
+            status.textContent = 'Ready';
+            status.classList.add('connected');
+            talkBtn.disabled = false;
+        } else {
+            status.textContent = 'Speech recognition not supported';
+            status.classList.add('error');
+        }
+        
+        // Add message to UI
         function addMessage(text, role) {
             const msg = document.createElement('div');
             msg.className = `message ${role}`;
             msg.innerHTML = `
                 <div class="message-label">${role === 'user' ? 'You' : 'Snapper'}</div>
-                <div class="message-text">${text}</div>
+                <div class="message-text">${escapeHtml(text)}</div>
             `;
             messages.appendChild(msg);
             messages.scrollTop = messages.scrollHeight;
         }
         
-        async function sendMessage(text) {
-            addMessage(text, 'user');
-            
-            // Backend connection requires Tailscale funnel or public endpoint
-            // For now, use Telegram for full functionality
-            setTimeout(() => {
-                addMessage('Voice UI is aesthetic but not connected yet. Use Telegram to actually talk to me. Need to set up Tailscale funnel or public gateway endpoint.', 'assistant');
-            }, 500);
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
         
+        // Update status
+        function setStatus(text, className) {
+            status.textContent = text;
+            status.className = 'status';
+            if (className) {
+                status.classList.add(className);
+            }
+        }
+        
+        // Send message to OpenClaw
+        async function sendMessage(text) {
+            if (isProcessing) return;
+            
+            addMessage(text, 'user');
+            isProcessing = true;
+            setStatus('Thinking...', 'processing');
+            talkBtn.classList.add('processing');
+            talkBtn.textContent = 'Processing...';
+            
+            try {
+                const gatewayUrl = gatewayUrlInput.value.trim();
+                const password = gatewayPasswordInput.value.trim();
+                
+                const response = await fetch(`${gatewayUrl}/api/v1/chat`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${password}`
+                    },
+                    body: JSON.stringify({
+                        message: text,
+                        sessionId: sessionId,
+                        stream: false
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Gateway error: ${response.status} ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                const replyText = data.reply || data.message || 'No response';
+                
+                addMessage(replyText, 'assistant');
+                await speakText(replyText);
+                
+            } catch (error) {
+                console.error('OpenClaw error:', error);
+                const errorMsg = `Error: ${error.message}`;
+                addMessage(errorMsg, 'assistant');
+                setStatus('Error', 'error');
+            } finally {
+                isProcessing = false;
+                if (!isSpeaking) {
+                    setStatus('Ready', 'connected');
+                    talkBtn.classList.remove('processing');
+                    talkBtn.textContent = 'Hold to Talk';
+                }
+            }
+        }
+        
+        // Text-to-speech with ElevenLabs
+        async function speakText(text) {
+            if (!text || text.trim().length === 0) return;
+            
+            try {
+                isSpeaking = true;
+                setStatus('Speaking...', 'speaking');
+                talkBtn.classList.add('speaking');
+                talkBtn.textContent = 'Speaking...';
+                
+                const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${ELEVENLABS_VOICE_ID}`, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'audio/mpeg',
+                        'Content-Type': 'application/json',
+                        'xi-api-key': ELEVENLABS_API_KEY
+                    },
+                    body: JSON.stringify({
+                        text: text,
+                        model_id: 'eleven_monolingual_v1',
+                        voice_settings: {
+                            stability: 0.5,
+                            similarity_boost: 0.75
+                        }
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`ElevenLabs error: ${response.status}`);
+                }
+                
+                const audioBlob = await response.blob();
+                const audioUrl = URL.createObjectURL(audioBlob);
+                
+                audioPlayer.src = audioUrl;
+                audioPlayer.play();
+                
+                audioPlayer.onended = () => {
+                    isSpeaking = false;
+                    setStatus('Ready', 'connected');
+                    talkBtn.classList.remove('speaking');
+                    talkBtn.textContent = 'Hold to Talk';
+                    URL.revokeObjectURL(audioUrl);
+                };
+                
+            } catch (error) {
+                console.error('TTS error:', error);
+                isSpeaking = false;
+                setStatus('TTS Error', 'error');
+                talkBtn.classList.remove('speaking');
+                talkBtn.textContent = 'Hold to Talk';
+            }
+        }
+        
+        // Speech recognition handlers
         if (recognition) {
             recognition.onresult = (event) => {
                 const results = Array.from(event.results);
@@ -278,33 +508,33 @@
             };
             
             recognition.onerror = (event) => {
-                console.error('Speech error:', event.error);
-                status.textContent = `Error: ${event.error}`;
-                status.classList.remove('recording');
+                console.error('Speech recognition error:', event.error);
+                setStatus(`Error: ${event.error}`, 'error');
+                isRecording = false;
+                talkBtn.classList.remove('recording');
+                talkBtn.textContent = 'Hold to Talk';
             };
             
             recognition.onend = () => {
                 isRecording = false;
                 talkBtn.classList.remove('recording');
-                talkBtn.textContent = 'Hold to Talk';
-                status.textContent = 'Ready';
-                status.classList.remove('recording');
+                if (!isProcessing && !isSpeaking) {
+                    setStatus('Ready', 'connected');
+                    talkBtn.textContent = 'Hold to Talk';
+                }
             };
-        } else {
-            status.textContent = 'Speech not supported';
-            talkBtn.disabled = true;
-            talkBtn.style.opacity = '0.3';
         }
         
+        // Push-to-talk button handlers
         talkBtn.addEventListener('mousedown', () => {
-            if (!recognition) return;
+            if (!recognition || isProcessing || isSpeaking) return;
+            
             isRecording = true;
             currentTranscript = '';
             recognition.start();
             talkBtn.classList.add('recording');
-            talkBtn.textContent = 'Listening';
-            status.textContent = 'Recording';
-            status.classList.add('recording');
+            talkBtn.textContent = '🎤 Listening...';
+            setStatus('Listening...', 'recording');
         });
         
         talkBtn.addEventListener('mouseup', () => {
@@ -317,9 +547,29 @@
             recognition.stop();
         });
         
+        // Touch support for mobile
+        talkBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (!recognition || isProcessing || isSpeaking) return;
+            
+            isRecording = true;
+            currentTranscript = '';
+            recognition.start();
+            talkBtn.classList.add('recording');
+            talkBtn.textContent = '🎤 Listening...';
+            setStatus('Listening...', 'recording');
+        });
+        
+        talkBtn.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            if (!recognition || !isRecording) return;
+            recognition.stop();
+        });
+        
+        // Text input handlers
         sendBtn.addEventListener('click', () => {
             const text = textInput.value.trim();
-            if (text) {
+            if (text && !isProcessing) {
                 sendMessage(text);
                 textInput.value = '';
             }
@@ -331,16 +581,21 @@
             }
         });
         
-        // Touch support
-        talkBtn.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            talkBtn.dispatchEvent(new Event('mousedown'));
+        // Save settings to localStorage
+        gatewayUrlInput.addEventListener('change', () => {
+            localStorage.setItem('snapper-gateway-url', gatewayUrlInput.value);
         });
         
-        talkBtn.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            talkBtn.dispatchEvent(new Event('mouseup'));
+        gatewayPasswordInput.addEventListener('change', () => {
+            localStorage.setItem('snapper-gateway-password', gatewayPasswordInput.value);
         });
+        
+        // Load settings from localStorage
+        const savedUrl = localStorage.getItem('snapper-gateway-url');
+        const savedPassword = localStorage.getItem('snapper-gateway-password');
+        
+        if (savedUrl) gatewayUrlInput.value = savedUrl;
+        if (savedPassword) gatewayPasswordInput.value = savedPassword;
     </script>
 </body>
 </html>
