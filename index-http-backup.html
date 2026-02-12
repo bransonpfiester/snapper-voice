@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Snapper Voice (Streaming)</title>
+    <title>Snapper Voice</title>
     <style>
         * {
             margin: 0;
@@ -49,7 +49,6 @@
         }
         
         .status.connected { opacity: 0.6; color: #10b981; }
-        .status.connecting { opacity: 0.5; color: #fbbf24; }
         .status.recording { opacity: 0.8; color: #6366f1; }
         .status.processing { opacity: 0.8; color: #f59e0b; }
         .status.speaking { opacity: 0.8; color: #ec4899; }
@@ -226,19 +225,43 @@
             background: rgba(255, 255, 255, 0.05);
         }
         
-        .mode-badge {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            background: rgba(16, 185, 129, 0.2);
-            border: 1px solid rgba(16, 185, 129, 0.4);
-            color: #10b981;
-            padding: 6px 14px;
-            border-radius: 20px;
-            font-size: 0.7rem;
+        .settings {
+            margin-top: 25px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+        }
+        
+        .settings h3 {
+            font-size: 0.85rem;
             text-transform: uppercase;
             letter-spacing: 0.1em;
-            font-weight: 500;
+            opacity: 0.6;
+            margin-bottom: 15px;
+        }
+        
+        .settings label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 0.8rem;
+            opacity: 0.5;
+        }
+        
+        .settings input {
+            width: 100%;
+            padding: 10px 14px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.03);
+            color: white;
+            font-size: 0.85rem;
+            margin-bottom: 12px;
+        }
+        
+        .settings input:focus {
+            outline: none;
+            border-color: rgba(255, 255, 255, 0.2);
         }
         
         @media (max-width: 640px) {
@@ -258,27 +281,18 @@
             .talk-btn {
                 height: 80px;
             }
-            
-            .mode-badge {
-                top: 10px;
-                right: 10px;
-                font-size: 0.6rem;
-                padding: 4px 10px;
-            }
         }
     </style>
 </head>
 <body>
-    <div class="mode-badge">🔴 LIVE STREAMING</div>
-    
     <div class="container">
         <h1>Snapper 🦞</h1>
-        <div class="status" id="status">Connecting to server...</div>
+        <div class="status" id="status">Initializing...</div>
         
         <div class="messages" id="messages">
             <div class="message assistant">
                 <div class="message-label">Snapper</div>
-                <div class="message-text">Connecting to streaming server...</div>
+                <div class="message-text">Hey! Hold the button and speak, or type below.</div>
             </div>
         </div>
         
@@ -292,13 +306,20 @@
                 <button id="sendBtn">Send</button>
             </div>
         </div>
+        
+        <div class="settings" style="display: none;">
+            <h3>Settings</h3>
+            <label>Session ID</label>
+            <input type="text" id="gatewayUrl" value="web-voice" />
+        </div>
     </div>
+    
+    <audio id="audioPlayer" style="display:none;"></audio>
 
     <script>
         // Configuration
-        const WS_URL = window.location.hostname === 'localhost' 
-            ? 'ws://localhost:18791'
-            : 'wss://bransonsmini.tail8d2a35.ts.net/ws';
+        const ELEVENLABS_API_KEY = 'sk_6e29c2c4e7217fd6e947103b18524c8868ae8f6b954f6bcf';
+        const ELEVENLABS_VOICE_ID = 'IKne3meq5aSn9XLyUdCD'; // Charlie - Deep, Confident voice
         
         // Speech recognition setup
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -316,22 +337,25 @@
         const talkBtn = document.getElementById('talkBtn');
         const textInput = document.getElementById('textInput');
         const sendBtn = document.getElementById('sendBtn');
+        const audioPlayer = document.getElementById('audioPlayer');
+        const gatewayUrlInput = document.getElementById('gatewayUrl');
+        const gatewayPasswordInput = document.getElementById('gatewayPassword');
         
         // State
-        let ws = null;
         let isRecording = false;
         let isProcessing = false;
         let isSpeaking = false;
         let currentTranscript = '';
-        let audioContext = null;
-        let audioQueue = [];
-        let isPlaying = false;
+        let sessionId = 'web-voice-' + Date.now();
         
-        // Initialize Web Audio API for streaming playback
-        function initAudioContext() {
-            if (!audioContext) {
-                audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            }
+        // Initialize
+        if (recognition) {
+            status.textContent = 'Ready';
+            status.classList.add('connected');
+            talkBtn.disabled = false;
+        } else {
+            status.textContent = 'Speech recognition not supported';
+            status.classList.add('error');
         }
         
         // Add message to UI
@@ -361,138 +385,110 @@
             }
         }
         
-        // Connect to WebSocket server
-        function connectWebSocket() {
-            console.log('Connecting to:', WS_URL);
-            setStatus('Connecting...', 'connecting');
-            
-            ws = new WebSocket(WS_URL);
-            
-            ws.onopen = () => {
-                console.log('✅ WebSocket connected');
-                setStatus('Connected (Streaming Mode)', 'connected');
-                talkBtn.disabled = !recognition;
-                
-                // Clear initial message
-                messages.innerHTML = '';
-                addMessage('Hey! Hold the button and speak, or type below. Responses stream in real-time!', 'assistant');
-            };
-            
-            ws.onmessage = async (event) => {
-                const data = JSON.parse(event.data);
-                await handleWebSocketMessage(data);
-            };
-            
-            ws.onerror = (error) => {
-                console.error('❌ WebSocket error:', error);
-                setStatus('Connection Error', 'error');
-            };
-            
-            ws.onclose = () => {
-                console.log('👋 WebSocket disconnected');
-                setStatus('Disconnected - Reconnecting...', 'error');
-                talkBtn.disabled = true;
-                
-                // Attempt to reconnect after 3 seconds
-                setTimeout(connectWebSocket, 3000);
-            };
-        }
-        
-        // Handle WebSocket messages
-        async function handleWebSocketMessage(data) {
-            console.log('📨 Received:', data.type);
-            
-            switch (data.type) {
-                case 'connected':
-                    console.log('Server says:', data.message);
-                    break;
-                
-                case 'status':
-                    if (data.status === 'thinking') {
-                        setStatus('Thinking...', 'processing');
-                        talkBtn.classList.add('processing');
-                        talkBtn.textContent = 'Processing...';
-                    } else if (data.status === 'speaking') {
-                        setStatus('Speaking...', 'speaking');
-                        talkBtn.classList.add('speaking');
-                        talkBtn.textContent = 'Speaking...';
-                        isSpeaking = true;
-                        initAudioContext();
-                    }
-                    break;
-                
-                case 'text':
-                    addMessage(data.content, 'assistant');
-                    break;
-                
-                case 'audio':
-                    await playAudioChunk(data.data);
-                    break;
-                
-                case 'audio_complete':
-                    console.log('✅ Audio playback complete');
-                    break;
-                
-                case 'complete':
-                    isProcessing = false;
-                    isSpeaking = false;
-                    setStatus('Connected (Streaming Mode)', 'connected');
-                    talkBtn.classList.remove('processing', 'speaking');
-                    talkBtn.textContent = 'Hold to Talk';
-                    break;
-                
-                case 'error':
-                    console.error('Server error:', data.error);
-                    addMessage(`Error: ${data.error}`, 'assistant');
-                    setStatus('Error', 'error');
-                    isProcessing = false;
-                    isSpeaking = false;
-                    talkBtn.classList.remove('processing', 'speaking');
-                    talkBtn.textContent = 'Hold to Talk';
-                    break;
-            }
-        }
-        
-        // Play audio chunk using Web Audio API
-        async function playAudioChunk(base64Data) {
-            try {
-                // Decode base64 to ArrayBuffer
-                const binaryString = atob(base64Data);
-                const bytes = new Uint8Array(binaryString.length);
-                for (let i = 0; i < binaryString.length; i++) {
-                    bytes[i] = binaryString.charCodeAt(i);
-                }
-                
-                // Decode audio data
-                const audioBuffer = await audioContext.decodeAudioData(bytes.buffer);
-                
-                // Create source and play
-                const source = audioContext.createBufferSource();
-                source.buffer = audioBuffer;
-                source.connect(audioContext.destination);
-                source.start();
-                
-            } catch (error) {
-                console.error('Error playing audio chunk:', error);
-            }
-        }
-        
-        // Send message via WebSocket
-        function sendMessage(text) {
-            if (!ws || ws.readyState !== WebSocket.OPEN) {
-                addMessage('Not connected to server', 'assistant');
-                return;
-            }
-            
+        // Send message to OpenClaw via Vercel API
+        async function sendMessage(text) {
             if (isProcessing) return;
             
             addMessage(text, 'user');
             isProcessing = true;
+            setStatus('Thinking...', 'processing');
+            talkBtn.classList.add('processing');
+            talkBtn.textContent = 'Processing...';
             
-            ws.send(JSON.stringify({
-                type: 'chat',
-                content: text
-            }));
+            try {
+                // Use Vercel serverless function as bridge
+                const apiUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+                    ? '/api/chat'  // Local testing
+                    : 'https://snapper-voice.vercel.app/api/chat';  // Production
+                
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: text,
+                        sessionId: sessionId
+                    })
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.error || `Server error: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                const replyText = data.reply || 'No response';
+                
+                addMessage(replyText, 'assistant');
+                await speakText(replyText);
+                
+            } catch (error) {
+                console.error('API error:', error);
+                const errorMsg = `Error: ${error.message}`;
+                addMessage(errorMsg, 'assistant');
+                setStatus('Error', 'error');
+            } finally {
+                isProcessing = false;
+                if (!isSpeaking) {
+                    setStatus('Ready', 'connected');
+                    talkBtn.classList.remove('processing');
+                    talkBtn.textContent = 'Hold to Talk';
+                }
+            }
+        }
+        
+        // Text-to-speech with ElevenLabs
+        async function speakText(text) {
+            if (!text || text.trim().length === 0) return;
+            
+            try {
+                isSpeaking = true;
+                setStatus('Speaking...', 'speaking');
+                talkBtn.classList.add('speaking');
+                talkBtn.textContent = 'Speaking...';
+                
+                const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${ELEVENLABS_VOICE_ID}`, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'audio/mpeg',
+                        'Content-Type': 'application/json',
+                        'xi-api-key': ELEVENLABS_API_KEY
+                    },
+                    body: JSON.stringify({
+                        text: text,
+                        voice_settings: {
+                            stability: 0.5,
+                            similarity_boost: 0.75
+                        }
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`ElevenLabs error: ${response.status}`);
+                }
+                
+                const audioBlob = await response.blob();
+                const audioUrl = URL.createObjectURL(audioBlob);
+                
+                audioPlayer.src = audioUrl;
+                audioPlayer.play();
+                
+                audioPlayer.onended = () => {
+                    isSpeaking = false;
+                    setStatus('Ready', 'connected');
+                    talkBtn.classList.remove('speaking');
+                    talkBtn.textContent = 'Hold to Talk';
+                    URL.revokeObjectURL(audioUrl);
+                };
+                
+            } catch (error) {
+                console.error('TTS error:', error);
+                isSpeaking = false;
+                setStatus('TTS Error', 'error');
+                talkBtn.classList.remove('speaking');
+                talkBtn.textContent = 'Hold to Talk';
+            }
         }
         
         // Speech recognition handlers
@@ -520,7 +516,7 @@
                 isRecording = false;
                 talkBtn.classList.remove('recording');
                 if (!isProcessing && !isSpeaking) {
-                    setStatus('Connected (Streaming Mode)', 'connected');
+                    setStatus('Ready', 'connected');
                     talkBtn.textContent = 'Hold to Talk';
                 }
             };
@@ -582,15 +578,21 @@
             }
         });
         
-        // Initialize
-        connectWebSocket();
+        // Save settings to localStorage
+        gatewayUrlInput.addEventListener('change', () => {
+            localStorage.setItem('snapper-gateway-url', gatewayUrlInput.value);
+        });
         
-        // Keep connection alive with ping
-        setInterval(() => {
-            if (ws && ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({ type: 'ping' }));
-            }
-        }, 30000); // Every 30 seconds
+        gatewayPasswordInput.addEventListener('change', () => {
+            localStorage.setItem('snapper-gateway-password', gatewayPasswordInput.value);
+        });
+        
+        // Load settings from localStorage
+        const savedUrl = localStorage.getItem('snapper-gateway-url');
+        const savedPassword = localStorage.getItem('snapper-gateway-password');
+        
+        if (savedUrl) gatewayUrlInput.value = savedUrl;
+        if (savedPassword) gatewayPasswordInput.value = savedPassword;
     </script>
 </body>
 </html>

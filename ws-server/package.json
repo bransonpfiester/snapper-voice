@@ -1,0 +1,16 @@
+{
+  "name": "snapper-voice-websocket",
+  "version": "1.0.0",
+  "description": "Real-time WebSocket server for Snapper Voice",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "ws": "^8.16.0",
+    "node-fetch": "^3.3.2",
+    "dotenv": "^16.4.1"
+  }
+}
